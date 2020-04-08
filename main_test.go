@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"strings"
 	"testing"
 )
@@ -47,7 +46,7 @@ func TestHashResponse(t *testing.T) {
 	for _, url := range urls {
 		hashedBody := getHash([]byte(url))
 		if !strings.Contains(got.String(), fmt.Sprintf("%s %s", checkURL(url), hashedBody)) {
-			log.Fatalf("got %s", got.String())
+			t.Errorf("got %s", got.String())
 		}
 	}
 }

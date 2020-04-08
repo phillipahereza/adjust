@@ -20,6 +20,7 @@ func main() {
 	flag.Parse()
 
 	urls := flag.Args()
+
 	if len(os.Args[1:]) == 0 {
 		fmt.Printf("Usage:\n\nmyhttp -parallel 4 http://amazon.com google.com\n")
 	}
