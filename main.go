@@ -17,21 +17,21 @@ type requester func(url string) []byte
 
 func main() {
 	var parallelJobs int
-	flag.IntVar(&parallelJobs, "parallel", 3, "Number of jobs to run in parallel")
+	flag.IntVar(&parallelJobs, "parallel", 10, "Number of jobs to run in parallel")
 	flag.Parse()
 
 	urls := flag.Args()
 	hashResponse(urls, getRequestBody, os.Stdout, parallelJobs)
 }
 
-func hashResponse(urls []string, requestGetter requester, writer io.Writer, nJobs int) {
+func hashResponse(urls []string, getter requester, output io.Writer, nJobs int) {
 	guard := make(chan struct{}, nJobs)
 	resultsChan := make(chan string)
 
 	for _, url := range urls {
 		go func(u string) {
 			guard <- struct{}{}
-			responseBody := requestGetter(u)
+			responseBody := getter(u)
 			if len(responseBody) == 0 {
 				resultsChan <- fmt.Sprintf("%s %s", u, "Invalid Response")
 				<-guard
@@ -44,7 +44,7 @@ func hashResponse(urls []string, requestGetter requester, writer io.Writer, nJob
 	}
 
 	for i := 0; i < len(urls); i++ {
-		fmt.Fprintf(writer, "%s\n", <-resultsChan)
+		fmt.Fprintf(output, "%s\n", <-resultsChan)
 	}
 }
 
