@@ -43,7 +43,6 @@ func TestHashResponse(t *testing.T) {
 	got := &bytes.Buffer{}
 
 	hashResponse(urls, fakeRequester, got, 3)
-	log.Println(got.String())
 
 	for _, url := range urls {
 		hashedBody := getHash([]byte(url))
