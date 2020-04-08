@@ -14,18 +14,20 @@ import (
 
 type requester func(url string) []byte
 
-
 func main() {
-	var parallelJobs int
-	flag.IntVar(&parallelJobs, "parallel", 10, "Number of jobs to run in parallel")
+	var parallelRequests int
+	flag.IntVar(&parallelRequests, "parallel", 10, "Number of requests to make in parallel")
 	flag.Parse()
 
 	urls := flag.Args()
-	hashResponse(urls, getRequestBody, os.Stdout, parallelJobs)
+	if len(os.Args[1:]) == 0 {
+		fmt.Printf("Usage:\n\nmyhttp -parallel 4 http://amazon.com google.com\n")
+	}
+	hashResponse(urls, getRequestBody, os.Stdout, parallelRequests)
 }
 
-func hashResponse(urls []string, getter requester, output io.Writer, nJobs int) {
-	guard := make(chan struct{}, nJobs)
+func hashResponse(urls []string, getter requester, output io.Writer, nRequests int) {
+	guard := make(chan struct{}, nRequests)
 	resultsChan := make(chan string)
 
 	for _, url := range urls {
