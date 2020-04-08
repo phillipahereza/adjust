@@ -2,32 +2,76 @@ package main
 
 import (
 	"crypto/md5"
+	"encoding/hex"
+	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
+	"strings"
 )
 
-func main() {
-	args := os.Args[1:]
-	for _, u := range args {
-		result := makeRequest(u)
-		fmt.Println(result)
-	}
+type requester func(url string) []byte
 
+
+func main() {
+	var parallelJobs int
+	flag.IntVar(&parallelJobs, "parallel", 3, "Number of jobs to run in parallel")
+	flag.Parse()
+
+	urls := flag.Args()
+	hashResponse(urls, getRequestBody, os.Stdout, parallelJobs)
 }
 
-func makeRequest(url string) string {
+func hashResponse(urls []string, requestGetter requester, writer io.Writer, nJobs int) {
+	guard := make(chan struct{}, nJobs)
+	resultsChan := make(chan string)
+
+	for _, url := range urls {
+		go func(u string) {
+			guard <- struct{}{}
+			responseBody := requestGetter(u)
+			if len(responseBody) == 0 {
+				resultsChan <- fmt.Sprintf("%s %s", u, "Invalid Response")
+				<-guard
+				return
+			}
+			hashedBody := getHash(responseBody)
+			resultsChan <- fmt.Sprintf("%s %s", checkURL(u), hashedBody)
+			<-guard
+		}(url)
+	}
+
+	for i := 0; i < len(urls); i++ {
+		fmt.Fprintf(writer, "%s\n", <-resultsChan)
+	}
+}
+
+func getHash(p []byte) string {
+	hash := md5.New()
+	hash.Write(p)
+	hashedBytes := hash.Sum(nil)
+	return hex.EncodeToString(hashedBytes)
+}
+
+func getRequestBody(url string) []byte {
+	url = checkURL(url)
 	res, err := http.Get(url)
 	if err != nil {
-		log.Fatal(err)
+		return []byte{}
 	}
-	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		log.Fatal(err)
+		return []byte{}
 	}
-	hash := md5.Sum(body)
-	return fmt.Sprintf("%s %x", url, hash)
+	defer res.Body.Close()
+	return body
+}
+
+func checkURL(url string) string {
+	if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
+		return url
+	}
+	return "http://" + url
 }
